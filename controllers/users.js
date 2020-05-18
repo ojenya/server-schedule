@@ -1,8 +1,4 @@
 const User = require('../models/user');
-// const { NotFoundError, InternalServerError, UnauthorizedError } = require('../errors');
-
-
-
 
 const login = (req, res, next) => {
     const { email, password } = req.body;

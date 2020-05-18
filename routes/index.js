@@ -5,7 +5,8 @@ var router = express.Router();
 router.get('/', function(req, res, next) {
     res.render('index', { title: 'Express' });
 });
-router.get('/:id', function(req, res, next) {
+router.get('/:vk_user_id', function(req, res, next) {
+    console.log('req: ', req.params.vk_user_id);
     res.render('index', { title: id });
 });
 

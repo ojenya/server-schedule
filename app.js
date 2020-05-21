@@ -1,42 +1,76 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+require('dotenv').config();
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const { errors } = require('celebrate');
+const indexRouter = require('./routes/index')
+const bridge = require('@vkontakte/vk-bridge');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const { PORT = 3000 } = process.env;
+const { DB_URL } = process.env;
 
-var app = express();
+const app = express();
+// Отправляет событие нативному клиенту
+// bridge.send("VKWebAppInit", {});
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // за 15 минут
+    max: 100, // можно совершить максимум 100 запросов с одного IP
+});
+// app.use(helmet.cors({
+//   accessControlAllowOrigin: 'https://aoseledec.github.io/'
+// }));
+app.use(limiter);
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
+// mongoose.connect(DB_URL, {
+//   useNewUrlParser: true,
+//   useCreateIndex: true,
+//   useFindAndModify: false,
+//   useUnifiedTopology: true,
+// });
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(express.static(path.join(__dirname, '/build')));
+
+// app.use(requestLogger);
+
+// для тестов
+// app.get('/crash-test', () => {
+//   setTimeout(() => {
+//     throw new Error('Сервер сейчас упадёт');
+//   }, 0);
+// });
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
 
+// app.use('/articles', auth, articlesRouter);
+// app.use('/users', auth, usersRouter);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-    next(createError(404));
+app.use('*', (req, res, next) => {
+    next(new NotFoundError('Запрашиваемый ресурс не найден'));
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+// обработка ошибок
+// app.use(errorLogger);
 
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
+app.use(errors());
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    const { statusCode = 500, message } = err;
+
+    res
+        .status(statusCode)
+        .send({
+            message: statusCode === 500 ?
+                'На сервере произошла ошибка' : message,
+        });
 });
 
-module.exports = app;
+app.listen(PORT);

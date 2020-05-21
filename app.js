@@ -8,16 +8,17 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const { errors } = require('celebrate');
 const indexRouter = require('./routes/index')
-
+const bridge = require('@vkontakte/vk-bridge');
 
 const { PORT = 3000 } = process.env;
 const { DB_URL } = process.env;
 
 const app = express();
-
+// Отправляет событие нативному клиенту
+// bridge.send("VKWebAppInit", {});
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // за 15 минут
-  max: 100, // можно совершить максимум 100 запросов с одного IP
+    windowMs: 15 * 60 * 1000, // за 15 минут
+    max: 100, // можно совершить максимум 100 запросов с одного IP
 });
 // app.use(helmet.cors({
 //   accessControlAllowOrigin: 'https://aoseledec.github.io/'
@@ -35,7 +36,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// app.use(express.static(path.join(__dirname, '/public')));
+app.use(express.static(path.join(__dirname, '/build')));
 
 // app.use(requestLogger);
 
@@ -52,7 +53,7 @@ app.use('/', indexRouter);
 // app.use('/users', auth, usersRouter);
 
 app.use('*', (req, res, next) => {
-  next(new NotFoundError('Запрашиваемый ресурс не найден'));
+    next(new NotFoundError('Запрашиваемый ресурс не найден'));
 });
 
 // обработка ошибок
@@ -62,15 +63,14 @@ app.use(errors());
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  const { statusCode = 500, message } = err;
+    const { statusCode = 500, message } = err;
 
-  res
-    .status(statusCode)
-    .send({
-      message: statusCode === 500
-        ? 'На сервере произошла ошибка'
-        : message,
-    });
+    res
+        .status(statusCode)
+        .send({
+            message: statusCode === 500 ?
+                'На сервере произошла ошибка' : message,
+        });
 });
 
 app.listen(PORT);
